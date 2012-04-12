@@ -1,0 +1,31 @@
+# Maintainer: Yoshihisa Tanaka <yt.hisa@gmail.com>
+pkgname=epgdumpr2
+pkgver=20111001
+pkgrel=1
+pkgdesc='Dump EPG from MPEG2-TS'
+arch=('i686' 'x86_64')
+url='http://sourceforge.jp/projects/epgrec/'
+license=('GPL' 'custom')
+depends=('glibc')
+provides=(epgdump)
+conflicts=(epgdump)
+source=("http://sourceforge.jp/frs/redir.php?f=%2Fepgrec%2F53385%2F${pkgname}_${pkgver}.tar.gz"
+        "fix_overflow_maxseclen.patch")
+md5sums=('6ee02a067e43b95b1e9cea68f8857670'
+         '5910f66c57d85ec18b2d614facdd2d55')
+
+build() {
+  cd "$srcdir/$pkgname"
+  make clean
+  patch -p1 -i "$srcdir/fix_overflow_maxseclen.patch" || return 1
+  make
+}
+
+package() {
+  mkdir -p "$pkgdir/usr/bin"
+  mkdir -p "$pkgdir/usr/share/licenses/$pkgname"
+  install -Dm755 "$srcdir/$pkgname/epgdump" "$pkgdir/usr/bin/"
+  install -Dm644 "$srcdir/$pkgname/readme.txt" "$pkgdir/usr/share/licenses/$pkgname/"
+}
+
+# vim:set ts=2 sw=2 et:

@@ -1,0 +1,64 @@
+diff -cr epgdumpr2-orig/epgdump.c epgdumpr2/epgdump.c
+*** epgdumpr2-orig/epgdump.c	2009-11-18 12:23:01.000000000 +0900
+--- epgdumpr2/epgdump.c	2010-01-27 01:03:03.362381110 +0900
+***************
+*** 329,334 ****
+--- 329,338 ----
+  		staCount = csStaCount;
+  		act = 0 ;
+  	}else{
++ 		if(infile == NULL){
++ 			fprintf(stderr, "Can't open file: %s\n", file);
++ 			return 1;
++ 		}
+  		act = 1 ;
+  		svttop = calloc(1, sizeof(SVT_CONTROL));
+  		GetSDT(infile, svttop, secs, SECCOUNT);
+diff -cr epgdumpr2-orig/ts.c epgdumpr2/ts.c
+*** epgdumpr2-orig/ts.c	2010-01-27 01:07:19.922380802 +0900
+--- epgdumpr2/ts.c	2010-01-27 00:24:03.852380955 +0900
+***************
+*** 68,73 ****
+--- 68,78 ----
+  	
+  				boff = 12;
+  				secs[ridx].seclen = getBit(&secs[ridx].cur.payload[secs[ridx].curlen], &boff, 12) + 3; // ヘッダ
++ 				if(secs[ridx].seclen > MAXSECLEN){
++ 					// セクションが MAXSECLEN より大きい時はこのセクションをスキップ
++ 					secs[ridx].cont = 0;
++ 					goto retry;
++ 				}
+  	
+  				/*
+  				  if(secs[ridx].seclen == 2334) {
+***************
+*** 203,209 ****
+  		}
+  
+  		memset(pk.payload, 0xFF, sizeof(pk.payload));
+! 		if(pk.payloadlen <= 0){
+  			continue;
+  		}
+  		memcpy(pk.payload, payptr, pk.payloadlen);
+--- 208,214 ----
+  		}
+  
+  		memset(pk.payload, 0xFF, sizeof(pk.payload));
+! 		if((pk.payloadlen <= 0) || (pk.payloadlen > sizeof(pk.payload))){
+  			continue;
+  		}
+  		memcpy(pk.payload, payptr, pk.payloadlen);
+***************
+*** 227,232 ****
+--- 232,242 ----
+  					/* 最初 セクション長を調べる */
+  					boff = 12;
+  					secs[i].seclen = getBit(secs[i].cur.payload, &boff, 12) + 3; // ヘッダ;
++ 					if(secs[i].seclen > MAXSECLEN){
++ 						/* セクション長が MAXSECLEN より長いときはこのセクションをスキップ */
++ 						secs[i].cont = 0;
++ 						goto retry;
++ 					}
+  					/*
+  					  if(secs[i].seclen == 2334) {
+  					  printf("aa");
