@@ -1,0 +1,55 @@
+# Maintainer: Yoshihisa Tanaka <yt.hisa@gmail.com>
+pkgname=pt1
+pkgver=119
+pkgrel=1
+pkgdesc='pt1 driver and enhanced recording tool'
+arch=('i686' 'x86_64')
+url='http://hg.honeyplanet.jp/pt1/'
+license=('GPL')
+depends=('arib25')
+makedepends=('mercurial' 'autoconf' 'linux-headers')
+provides=(pt1)
+install=pt1.install
+source=(http://hg.honeyplanet.jp/pt1/archive/7662d0ecd74b.tar.bz2
+        improve-channel-switching.patch
+        driver-make.patch
+        fix_unload_problem.patch
+        fix_for_2.6.36.patch
+        fix_for_2.6.39.patch
+        bs.patch)
+md5sums=('ec582019ed12851029132521292bc46a'
+         '6a154fcecffb5d966fb6b7f9c64c92c9'
+         '0bec905dcb637f80ae9da25ecd18fb93'
+         '425ffe3516db3b767465738ee2284d72'
+         '078131a693b702ea74e8600ab88779a9'
+         '524b7fe44c33215ef7b76a56f11e436a'
+         '51e07b7fa7c9bcd8b7fab24db532d6bd')
+
+build() {
+  cd "$srcdir/pt1-7662d0ecd74b"
+
+  patch -Np0 -i "$srcdir/driver-make.patch" || return 1
+  patch -Np1 -i "$srcdir/improve-channel-switching.patch" || return 1
+  patch -p1 -i "$srcdir/fix_unload_problem.patch" || return 1
+  patch -p1 -i "$srcdir/fix_for_2.6.36.patch" || return 1
+  patch -p1 -i "$srcdir/fix_for_2.6.39.patch" || return 1
+  cd driver
+  make || return 1
+
+  cd ../recpt1
+  patch -p0 -i "$srcdir/bs.patch" || return 1
+  ./autogen.sh || return 1
+  ./configure --prefix=/usr --enable-b25 || return 1
+  make
+}
+
+package() {
+  cd "$srcdir/pt1-7662d0ecd74b"
+  cd driver
+  install -Dm 644 pt1_drv.ko "$pkgdir/lib/modules/`uname -r`/kernel/drivers/video/pt1_drv.ko"
+  install -Dm 644 etc/99-pt1.rules "$pkgdir/etc/udev/rules.d/99-pt1.rules"
+
+  cd ../recpt1
+  mkdir -p "$pkgdir/usr/bin"
+  make DESTDIR="$pkgdir/" install
+}

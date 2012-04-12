@@ -1,0 +1,51 @@
+--- a/driver/pt1_pci.c	2011-12-07 02:47:09.969636548 +0900
++++ b/driver/pt1_pci.c	2011-12-07 02:48:14.991805377 +0900
+@@ -34,8 +34,10 @@
+ 
+ #include <linux/ioctl.h>
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,36)
++#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,39)
+ #include <linux/smp_lock.h>
+ #endif
++#endif
+ 
+ #include	"pt1_com.h"
+ #include	"pt1_pci.h"
+@@ -148,6 +150,10 @@
+ #define		PT1MAJOR	251
+ #define		DRIVERNAME	"pt1video"
+ 
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,39)
++static DEFINE_MUTEX(pt1_ioctl_mutex);
++#endif
++
+ static	void	reset_dma(PT1_DEVICE *dev_conf)
+ {
+ 
+@@ -537,6 +543,7 @@
+ 			return 0 ;
+ 		case STOP_REC:
+ 			SetStream(channel->ptr->regs, channel->channel, FALSE);
++			schedule_timeout_interruptible(msecs_to_jiffies(100));
+ 			return 0 ;
+ 		case GET_SIGNAL_STRENGTH:
+ 			switch(channel->type){
+@@ -576,9 +593,18 @@
+ {
+ 	long ret;
+ 
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,39)
++	if(mutex_lock_interruptible(&pt1_ioctl_mutex))
++		return -EINTR;
++#else
+ 	lock_kernel();
++#endif
+ 	ret = pt1_do_ioctl(file, cmd, arg0);
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,39)
++	mutex_unlock(&pt1_ioctl_mutex);
++#else
+ 	unlock_kernel();
++#endif
+
+ 	return ret;
+ }

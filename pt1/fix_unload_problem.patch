@@ -1,0 +1,12 @@
+--- a/driver/pt1_pci.c	2011-12-07 02:01:04.567762216 +0900
++++ b/driver/pt1_pci.c	2011-12-07 02:05:56.504940140 +0900
+@@ -1004,8 +1004,8 @@
+ 
+ static void __exit pt1_pci_cleanup(void)
+ {
+-	class_destroy(pt1video_class);
+ 	pci_unregister_driver(&pt1_driver);
++	class_destroy(pt1video_class);
+ }
+ 
+ module_init(pt1_pci_init);

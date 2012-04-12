@@ -1,0 +1,48 @@
+--- a/driver/pt1_pci.c	2011-12-07 02:31:55.722215382 +0900
++++ b/driver/pt1_pci.c	2011-12-07 02:43:50.262977149 +0900
+@@ -33,7 +33,9 @@
+ #include <linux/cdev.h>
+ 
+ #include <linux/ioctl.h>
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,36)
+ #include <linux/smp_lock.h>
++#endif
+ 
+ #include	"pt1_com.h"
+ #include	"pt1_pci.h"
+@@ -77,6 +79,7 @@
+ #define		DMA_SIZE	4096			// DMAバッファサイズ
+ #define		DMA_RING_SIZE	128			// RINGサイズ
+ #define		DMA_RING_MAX	511			// 1RINGにいくつ詰めるか(1023はNGで511まで)
++#define		MAX_READ_SIZE	(1024 * 4)
+ #define		CHANEL_DMA_SIZE	(2*1024*1024)	// 地デジ用(16Mbps)
+ #define		BS_CHANEL_DMA_SIZE	(4*1024*1024)	// BS用(32Mbps)
+ 
+@@ -310,12 +313,12 @@
+ 			// 頻度を落す(4Kで起動させる)
+ 			for(lp = 0 ; lp < MAX_CHANNEL ; lp++){
+ 				channel = dev_conf->channel[real_channel[lp]] ;
+-				if((channel->size >= DMA_SIZE) && (channel->valid == TRUE)){
++				if((channel->size >= MAX_READ_SIZE ) && (channel->valid == TRUE)){
+ 					wake_up(&channel->wait_q);
+ 				}
+ 			}
+ 		}
+-		schedule_timeout_interruptible(msecs_to_jiffies(1));
++		schedule_timeout_interruptible(msecs_to_jiffies(10));
+ 	}
+ 	return 0 ;
+ }
+@@ -404,9 +407,9 @@
+ 	__u32	size ;
+ 	unsigned long dummy;
+ 
+-	// 4K単位で起こされるのを待つ(CPU負荷対策)
+-	if(channel->size < DMA_SIZE){
+-		wait_event_timeout(channel->wait_q, (channel->size >= DMA_SIZE),
++	// 128K単位で起こされるのを待つ(CPU負荷対策)
++	if(channel->size < MAX_READ_SIZE){
++		wait_event_timeout(channel->wait_q, (channel->size >= MAX_READ_SIZE),
+ 							msecs_to_jiffies(500));
+ 	}
+ 	mutex_lock(&channel->lock);

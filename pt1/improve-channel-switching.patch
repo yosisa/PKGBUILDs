@@ -1,0 +1,86 @@
+diff --git a/recpt1/recpt1.c b/recpt1/recpt1.c
+index 0e3b1c8..5ab13be 100644
+--- a/recpt1/recpt1.c
++++ b/recpt1/recpt1.c
+@@ -75,6 +75,8 @@ typedef struct msgbuf {
+ boolean f_exit = FALSE;
+ 
+ /* prototypes */
++ISDB_T_FREQ_CONV_TABLE *searchrecoff(char *channel);
++void calc_cn(int fd, int type);
+ int tune(char *channel, thread_data *tdata, char *device);
+ int close_tuner(thread_data *tdata);
+ 
+@@ -98,8 +100,6 @@ mq_recv(void *t)
+ //        fprintf(stderr, "ch=%d time=%d extend=%d\n", ch, recsec, time_to_add);
+ 
+         if(ch && tdata->ch != ch) {
+-            /* stop stream */
+-            ioctl(tdata->tfd, STOP_REC, 0);
+ #if 0
+             /* re-initialize decoder */
+             if(tdata->decoder) {
+@@ -112,17 +112,42 @@ mq_recv(void *t)
+                 }
+             }
+ #endif
+-            /* tune to new channel */
+-            if(close_tuner(tdata) != 0)
+-                return NULL;
++            int current_type = tdata->table->type;
++            ISDB_T_FREQ_CONV_TABLE *table = searchrecoff(channel);
++            if (table == NULL) {
++                fprintf(stderr, "Invalid Channel: %s\n", channel);
++                goto CHECK_TIME_TO_ADD;
++            }
++            tdata->table = table;
++
++            /* stop stream */
++            ioctl(tdata->tfd, STOP_REC, 0);
+ 
+             /* wait for remainder */
+             while(tdata->queue->num_used > 0) {
+                 usleep(10000);
+             }
+ 
+-            tune(channel, tdata, NULL);
+-
++            if (tdata->table->type != current_type) {
++                /* re-open device */
++                if(close_tuner(tdata) != 0)
++                    return NULL;
++
++                tune(channel, tdata, NULL);
++            } else {
++                /* SET_CHANNEL only */
++                const FREQUENCY freq = {
++                  .frequencyno = tdata->table->set_freq,
++                  .slot = tdata->table->add_freq,
++                };
++                if(ioctl(tdata->tfd, SET_CHANNEL, &freq) < 0) {
++                    fprintf(stderr, "Cannot tune to the specified channel\n");
++                    tdata->ch = 0;
++                    goto CHECK_TIME_TO_ADD;
++                }
++                tdata->ch = ch;
++                calc_cn(tdata->tfd, tdata->table->type);
++            }
+             /* restart recording */
+             if(ioctl(tdata->tfd, START_REC, 0) < 0) {
+                 fprintf(stderr, "Tuner cannot start recording\n");
+@@ -130,6 +155,7 @@ mq_recv(void *t)
+             }
+         }
+ 
++CHECK_TIME_TO_ADD:
+         if(time_to_add) {
+             tdata->recsec += time_to_add;
+             fprintf(stderr, "Extended %d sec\n", time_to_add);
+@@ -1139,6 +1165,7 @@ main(int argc, char **argv)
+                 break;
+             }
+             else {
++                free(bufptr);
+                 continue;
+             }
+         }
