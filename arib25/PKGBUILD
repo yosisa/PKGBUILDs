@@ -1,22 +1,24 @@
 # Maintainer: Yoshihisa Tanaka <yt.hisa@gmail.com>
 pkgname=arib25
-pkgver=0.2.4
+pkgver=0.2.5
 pkgrel=1
 pgkdesc="Concept code for ARIB STD-B25"
 arch=("i686" "x86_64")
 depends=("pcsclite")
-source=("http://hg.honeyplanet.jp/pt1/archive/c44e16dbb0e2.tar.bz2"
+
+_rev="ec7c87854f2f"
+source=("http://hg.honeyplanet.jp/pt1/archive/$_rev.tar.bz2"
         "no-ldconfig.patch")
-md5sums=("805e4c7778e88521847b105eaf0b3e56"
+md5sums=("8eaf6393691ed6f2044057d964e189d5"
          "b57358844c9873a8f75c7f9ed0a279e2")
 
 build() {
-  cd $srcdir/pt1-c44e16dbb0e2/$pkgname
+  cd "$srcdir/pt1-$_rev/$pkgname"
   make
 }
 
 package() {
-  cd $srcdir/pt1-c44e16dbb0e2/$pkgname
+  cd "$srcdir/pt1-$_rev/$pkgname"
   prefix=$pkgdir/usr
   mkdir -p $prefix/{bin,lib}
   patch -p0 -i $srcdir/${source[1]}
